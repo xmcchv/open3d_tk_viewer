@@ -4,17 +4,13 @@ import copy
 
 """
     @param file_path 指定点云文件路径
-    @param target_height 标定点云平面实际高度
 
     输出：
-    总体 RPY 角度：
-    滚转: -90.04°, 俯仰: -0.00°, 偏航: -4.03°
-    新增 RPY 角度：
-    滚转: -0.04°, 俯仰: -0.00°, 偏航: -4.03°
-    新增平移向量(x:0.0, y:0.737760899893015, z:0.0)
+    总体 RPY 角度：滚转: -90.04°, 俯仰: -0.00°, 偏航: -4.03°
+    新增 RPY 角度：滚转: -0.04°, 俯仰: -0.00°, 偏航: -4.03°
 """
 file_path = "./pcd/segment.pcd"  # 替换为您的点云文件路径
-target_height = 4.48    # 替换为您的目标高度
+r, p, y = -90, 0, 0  # 示例的滚转、俯仰、偏航角
 
 def load_point_cloud(file_path):
     """加载点云数据"""
@@ -41,6 +37,7 @@ def fit_plane(pcd):
     return normal_vector, d, inliers
 
 def rotate_to_xoz_plane(pcd, normal_vector):
+    global r, p, y
     """将平面旋转至 X-O-Z 平面"""
     # 目标法线，指向 Y 轴正方向
     target_normal = np.array([0, 1, 0])
@@ -59,7 +56,7 @@ def rotate_to_xoz_plane(pcd, normal_vector):
 
         print("计算得到的旋转矩阵：\n", rotation_matrix)
         # 从滚转、俯仰、偏航角构造旋转矩阵（示例）
-        r, p, y = -90, 0, 0  # 示例的滚转、俯仰、偏航角
+        
         euler_rotation_matrix = get_rotation_matrix_from_euler(r, p, y)
         print("从 RPY 角度构造的旋转矩阵：\n", euler_rotation_matrix)
 
@@ -69,19 +66,9 @@ def rotate_to_xoz_plane(pcd, normal_vector):
 
         # 将旋转矩阵转换为 RPY
         roll, pitch, yaw = rotation_matrix_to_rpy(combined_rotation)
-        print(f"总体 RPY 角度：\n滚转: {roll:.2f}°, 俯仰: {pitch:.2f}°, 偏航: {yaw:.2f}°")
+        print(f"总体 RPY 角度：滚转: {roll:.2f}°, 俯仰: {pitch:.2f}°, 偏航: {yaw:.2f}°")
         roll, pitch, yaw = rotation_matrix_to_rpy(rotation_matrix)
-        print(f"新增 RPY 角度：\n滚转: {roll:.2f}°, 俯仰: {pitch:.2f}°, 偏航: {yaw:.2f}°")
-
-        # 计算点云的中心
-        center = np.mean(np.asarray(pcd.points), axis=0)
-
-        # 计算平移向量
-        current_y = center[1]
-        translation_y = target_height - current_y  # 计算需要的平移量
-        translation_vector = np.array([0, translation_y, 0])  # 只在 Y 轴方向上平移
-        # 应用平移
-        print(f"新增平移向量(x:{translation_vector[0]}, y:{translation_vector[1]}, z:{translation_vector[2]})")
+        print(f"新增 RPY 角度：滚转: {roll:.2f}°, 俯仰: {pitch:.2f}°, 偏航: {yaw:.2f}°")
 
 
 def rotation_matrix_to_rpy(rotation_matrix):

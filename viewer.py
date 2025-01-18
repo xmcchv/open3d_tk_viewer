@@ -13,7 +13,7 @@ import threading
     @param directory_path 配置文件路径
     SHIFT+左键选点 右键清除选点
 """
-directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------0118-------05"
+directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------0118----8"
 
 class PointCloudVisualizer:
     def __init__(self, root, directory_path):
