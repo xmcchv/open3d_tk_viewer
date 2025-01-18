@@ -8,6 +8,13 @@ from tkinter import scrolledtext
 from tkinter import filedialog
 import threading
 
+
+"""
+    @param directory_path 配置文件路径
+    SHIFT+左键选点 右键清除选点
+"""
+directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------0118-------05"
+
 class PointCloudVisualizer:
     def __init__(self, root, directory_path):
         self.root = root
@@ -33,25 +40,38 @@ class PointCloudVisualizer:
         self.start_visualizer_thread()
 
     def parse_file(self, file_path):
+        """
+        解析文件并提取点云数据
+
+        :param file_path: 要解析的文件路径
+        :return: 包含点云数据的NumPy数组
+        """
         points = []
         
+        # 打开文件并逐行读取
         with open(file_path, 'r') as file:
             for line in file: 
-                parts = line.strip().split('---')  # 分割大车位置和JSON部分
+                # 分割大车位置和JSON部分
+                parts = line.strip().split('---')  
+                # 如果分割后的部分少于2个，则跳过该行
                 if len(parts) < 2:
                     continue
                 json_data = parts[1].strip()
                 try:
+                    # 解析JSON数据
                     json_objects = json.loads(json_data)
                     for obj in json_objects:
                         x = obj['X']
                         y = obj['Y']
                         z = obj['Z']
                         points.append([x, y, z])
+                        # 将坐标添加到self.pcd列表中
                         self.pcd.append([x, y, z])
                 except json.JSONDecodeError:
+                    # 如果解析JSON时出错，输出错误信息
                     self.output_text.insert(tk.END, f"Error decoding JSON: {json_data}\n")
                     self.output_text.see(tk.END)  # 滚动到最新输出
+        # 将points列表转换为NumPy数组并返回
         return np.array(points)
 
     def start_visualizer_thread(self):
@@ -69,6 +89,14 @@ class PointCloudVisualizer:
         self.point_cloud.points = o3d.utility.Vector3dVector(allcloud)
         o3d.io.write_point_cloud("./pcd/pointcloud.pcd", self.point_cloud)
         self.vis.add_geometry(self.point_cloud)
+
+        # 获取视图控制器
+        view_control = self.vis.get_view_control()
+        # 设置视角
+        view_control.set_lookat([0, 0, 0])  # 设置相机的目标点
+        view_control.set_up([0, 1, 0])      # 设置相机的上方向
+        view_control.set_front([0, 0, -1])   # 设置相机的前方向
+        view_control.set_zoom(0.5)           # 设置缩放级别
 
         # 注册选择变化的回调函数
         self.vis.register_selection_changed_callback(self.selection_changed_callback)
@@ -118,10 +146,9 @@ class PointCloudVisualizer:
                 continue
         self.output_text.insert(tk.END, f"load {len(files)} files, total pcd size:{len(self.pcd)}\n")
         self.output_text.see(tk.END)  # 滚动到最新输出
+        
 
 if __name__ == "__main__":
-    # 配置文件路径
-    directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------250118-------01"
     # 初始化可视化界面
     root = tk.Tk()
     viewer = PointCloudVisualizer(root, directory_path)
