@@ -59,7 +59,7 @@ def visualize_point_cloud(points):
     o3d.io.write_point_cloud("./pcd/point_cloud.pcd", point_cloud)
 
 if __name__ == "__main__":
-    file_path = "C:\\Users\\13576\\Desktop\\CloudsTest------0115-----01\\TestClouds2025-01-15-11-20-11"  # 替换为您的文件路径
+    file_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest-----0118--------11-1\\TestClouds2025-01-18-15-41-00"  # 替换为您的文件路径
     points = parse_file(file_path)
     
     if points.size > 0:

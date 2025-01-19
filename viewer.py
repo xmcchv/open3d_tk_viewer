@@ -10,10 +10,19 @@ import threading
 
 
 """
-    @param directory_path 配置文件路径
-    SHIFT+左键选点 右键清除选点
+    :=param directory_path 配置文件路径
+    :=param point_size 点的大小
+    使用： SHIFT+左键选点 右键清除选点
 """
-directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------0118----8"
+POINT_SIZE = 3
+# directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------0118--------11"
+
+
+# 自西向东
+directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------250118--------20"
+# 自东向西
+# directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------0118--------21"
+
 
 class PointCloudVisualizer:
     def __init__(self, root, directory_path):
@@ -80,6 +89,7 @@ class PointCloudVisualizer:
 
     def run_visualizer(self):
         """运行可视化器"""
+        global POINT_SIZE
         self.vis = o3d.visualization.VisualizerWithVertexSelection()
         self.vis.create_window("Open3D Visualizer - SHIFT+左键选点 右键清除选点", width=960, height=720)
 
@@ -90,6 +100,8 @@ class PointCloudVisualizer:
         o3d.io.write_point_cloud("./pcd/pointcloud.pcd", self.point_cloud)
         self.vis.add_geometry(self.point_cloud)
 
+        self.vis.get_render_option().point_size = POINT_SIZE
+        self.vis.get_render_option().point_color_option = o3d.visualization.PointColorOption.YCoordinate
         # 获取视图控制器
         view_control = self.vis.get_view_control()
         # 设置视角
