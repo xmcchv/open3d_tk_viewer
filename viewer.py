@@ -10,19 +10,21 @@ import threading
 
 
 """
-    :=param directory_path 配置文件路径
-    :=param point_size 点的大小
-    使用： SHIFT+左键选点 右键清除选点
+    :=param DIRECTORY_PATH 配置文件路径
+    :=param ISFILE 是否是文件 单个文件True 文件夹False
+    :=param FILEPATTERN 文件相同的部分,读取文件夹时设置 如："TestClouds*"
+    :=param POINT_SIZE 点的大小
+    使用方式： SHIFT+左键选点 右键清除选点
 """
-POINT_SIZE = 3 # 显示的点云大小
-
-# directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------250118--------20"
-directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------250120------34"
+POINT_SIZE = 3 
+ISFILE= False 
+FILEPATTERN = "TestClouds*" 
+DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest(1)"
 
 # 自西向东
-# directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest------250120-------1"
+# DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest------250120-------1"
 # 自东向西
-# directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------0120--------2"
+# DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------0120--------2"
 
 
 class PointCloudVisualizer:
@@ -31,8 +33,7 @@ class PointCloudVisualizer:
         self.root.geometry("960x480")
         self.root.title("Point Cloud Visualizer")
         # 设置文件夹路径
-        self.directory_path = directory_path
-
+        self.directory_path = DIRECTORY_PATH
         # 创建文本框用于显示输出
         self.output_text = scrolledtext.ScrolledText(self.root, width=100, height=20, 
                                                       font=("Courier New", 20),  # 设置字体
@@ -155,23 +156,31 @@ class PointCloudVisualizer:
             self.output_text.see(tk.END)  # 滚动到最新输出
 
     def load_point_cloud(self):
-        """加载点云数据"""
-        file_pattern = os.path.join(self.directory_path, "TestClouds*")
-        files = glob.glob(file_pattern)
-        files.sort()
-
-        for file in files:
+        """加载点云数据,根据ISFILE判断是文件路径还是文件夹路径"""
+        if ISFILE:
             self.output_text.insert(tk.END, f"Processing file: {file}\n")
-            points = self.parse_file(file)
+            points = self.parse_file(self.directory_path)
             self.output_text.insert(tk.END, f"Number of points in file {os.path.basename(file)}: {len(points)}\n")
             if len(points) <= 0:
-                continue
-        self.output_text.insert(tk.END, f"load {len(files)} files, total pcd size:{len(self.pcd)}, average size:{len(self.pcd)/len(files)}\n")
-        self.output_text.see(tk.END)  # 滚动到最新输出
+                self.output_text.insert(tk.END, f"file {{os.path.basename(file)}} is empty, please make sure it has points!\n")
+            self.output_text.see(tk.END)  # 滚动到最新输出
+        else:
+            file_pattern = os.path.join(self.directory_path, FILEPATTERN)
+            files = glob.glob(file_pattern)
+            files.sort()
+
+            for file in files:
+                self.output_text.insert(tk.END, f"Processing file: {file}\n")
+                points = self.parse_file(file)
+                self.output_text.insert(tk.END, f"Number of points in file {os.path.basename(file)}: {len(points)}\n")
+                if len(points) <= 0:
+                    continue
+            self.output_text.insert(tk.END, f"load {len(files)} files, total pcd size:{len(self.pcd)}, average size:{len(self.pcd)/len(files)}\n")
+            self.output_text.see(tk.END)  # 滚动到最新输出
         
 
 if __name__ == "__main__":
     # 初始化可视化界面
     root = tk.Tk()
-    viewer = PointCloudVisualizer(root, directory_path)
+    viewer = PointCloudVisualizer(root, DIRECTORY_PATH)
     root.mainloop()

@@ -3,21 +3,21 @@ import numpy as np
 import copy
 
 """
-    用cloudcompare裁剪一段已知的平面点云,算法会计算平面的法向量并输出其旋转到xoz平面的旋转矩阵和欧拉角
+    用cloudcompare裁剪一段已知的平面点云,算法计算平面的法向量并输出其旋转到xoz平面的旋转矩阵和欧拉角
     目标高度只能计算最后的平移向量。
-    :=param file_path 指定点云文件路径
-    :=param r 滚转角度
-    :=param p 俯仰角度
-    :=param y 偏航角度
-    :=param target_height 目标高度
+    :=param FILE_PATH 点云文件路径
+    :=param ROLL 滚转角
+    :=param PITCH 俯仰角
+    :=param YAW 偏航角
+    :=param TARGET_PATH 目标高度
     输出：
     总体 RPY 角度：滚转: -90.04°, 俯仰: -0.00°, 偏航: -4.09°
     新增 RPY 角度：滚转: -0.04°, 俯仰: -0.00°, 偏航: -4.09°  (雷达rpy已有基础上的增加值)
-    新增平移向量(x:0.0, y:0.5413647952142253, z:0.0) (非雷达直接平移向量,变换后再平移到指定高度的平移向量)
+    新增平移向量(x:0.0, y:0.54136, z:0.0) (非雷达直接平移向量,变换后再平移到指定高度的平移向量)
 """
-file_path = "./pcd/segment.pcd"  # 点云文件路径
-r, p, y = -90, 0, 0  # 已经设置的滚转、俯仰、偏航角（点云是在此变换下的）
-target_height = 4.48 # 目标高度
+FILE_PATH = "./pcd/segment.pcd"  # 点云文件路径
+ROLL, PITCH, YAW = -90, 0, 0  # 已经设置的滚转、俯仰、偏航角（点云是在此变换下的）
+TARGET_PATH = 4.48 # 目标高度
 """
     T_trans * T_init = T_total
 =>  [rotation_matrix|translate_vector] * T_bridge * T_init = [R_combind|t_combind]
@@ -62,7 +62,7 @@ def rpy_to_spherical(roll, pitch, yaw):
     return theta_rad, phi_rad
 
 def rotate_to_xoz_plane(pcd, normal_vector, oncetrans_pcd):
-    global r, p, y, target_height, inliers
+    global ROLL, PITCH, YAW, TARGET_PATH, inliers
     """将平面旋转至 X-O-Z 平面"""
     # 目标法线，指向 Y 轴正方向
     target_normal = np.array([0, 1, 0])
@@ -82,7 +82,7 @@ def rotate_to_xoz_plane(pcd, normal_vector, oncetrans_pcd):
         print("计算得到的旋转矩阵：\n", rotation_matrix)
         # 从滚转、俯仰、偏航角构造旋转矩阵（示例）
         
-        euler_rotation_matrix = get_rotation_matrix_from_euler(r, p, y)
+        euler_rotation_matrix = get_rotation_matrix_from_euler(ROLL, PITCH, YAW)
         print("从 RPY 角度构造的旋转矩阵：\n", euler_rotation_matrix)
 
         # 右乘旋转矩阵的逆矩阵
@@ -101,7 +101,7 @@ def rotate_to_xoz_plane(pcd, normal_vector, oncetrans_pcd):
         inliers_pcd = pcd.select_by_index(inliers)
         center = np.mean(np.asarray(inliers_pcd.points), axis=0)
         #计算点云到平面的距离
-        distances = target_height - center[1]
+        distances = TARGET_PATH - center[1]
         #到指定y轴高度的平移
         translation_vector = np.array([0, distances, 0])
         # rotation_matrix translation_vector 构造变换矩阵
@@ -190,4 +190,4 @@ def get_rotation_matrix_from_euler(r, p, y):
 
 
 if __name__ == "__main__":
-    main(file_path)
+    main(FILE_PATH)
