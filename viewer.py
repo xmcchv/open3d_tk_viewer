@@ -14,14 +14,14 @@ import threading
     :=param point_size 点的大小
     使用： SHIFT+左键选点 右键清除选点
 """
-POINT_SIZE = 3
-# directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------0118--------11"
+POINT_SIZE = 3 # 显示的点云大小
 
+directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest------250120------29"
 
 # 自西向东
-directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------250118--------20"
+# directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest------250120-------1"
 # 自东向西
-# directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------0118--------21"
+# directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------0120--------2"
 
 
 class PointCloudVisualizer:
@@ -84,7 +84,14 @@ class PointCloudVisualizer:
         return np.array(points)
 
     def start_visualizer_thread(self):
+        """
+        启动可视化器线程。
+
+        此方法创建一个新线程，该线程将运行 `run_visualizer` 方法，以在后台处理点云数据的可视化。
+        """
+        # 创建一个新的线程，目标函数是 self.run_visualizer，设置为守护线程
         self.visualizer_thread = threading.Thread(target=self.run_visualizer, daemon=True)
+        # 启动线程
         self.visualizer_thread.start()
 
     def run_visualizer(self):
@@ -105,7 +112,10 @@ class PointCloudVisualizer:
         # 获取视图控制器
         view_control = self.vis.get_view_control()
         # 设置视角
-        view_control.set_lookat([0, 0, 0])  # 设置相机的目标点
+        # 计算点云的中心
+        points = np.asarray(self.point_cloud.points)  # 获取点云的点坐标
+        center = np.mean(points, axis=0)  # 计算中心点
+        view_control.set_lookat(center.tolist())  # 设置相机的目标点
         view_control.set_up([0, 1, 0])      # 设置相机的上方向
         view_control.set_front([0, 0, -1])   # 设置相机的前方向
         view_control.set_zoom(0.5)           # 设置缩放级别
@@ -138,7 +148,7 @@ class PointCloudVisualizer:
     def selection_changed_callback(self):
         # 获取当前选择的点
         picked_points = self.vis.get_picked_points()
-        if picked_points:
+        if picked_points is not None:
             point_index = picked_points[-1].index
             point_coordinates = np.asarray(self.point_cloud.points)[point_index]
             self.output_text.insert(tk.END, f"Selected ID: {point_index}, coordinate: (x:{point_coordinates[0]}, y:{point_coordinates[1]}, z:{point_coordinates[2]})\n")
@@ -153,7 +163,7 @@ class PointCloudVisualizer:
         for file in files:
             self.output_text.insert(tk.END, f"Processing file: {file}\n")
             points = self.parse_file(file)
-            self.output_text.insert(tk.END, f"Number of points in file {file}: {len(points)}\n")
+            self.output_text.insert(tk.END, f"Number of points in file {os.path.basename(file)}: {len(points)}\n")
             if len(points) <= 0:
                 continue
         self.output_text.insert(tk.END, f"load {len(files)} files, total pcd size:{len(self.pcd)}\n")

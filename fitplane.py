@@ -3,6 +3,8 @@ import numpy as np
 import copy
 
 """
+    用cloudcompare裁剪一段已知的平面点云,算法会计算平面的法向量并输出其旋转到xoz平面的旋转矩阵和欧拉角
+    目标高度只能计算最后的平移向量。
     :=param file_path 指定点云文件路径
     :=param r 滚转角度
     :=param p 俯仰角度
@@ -13,8 +15,8 @@ import copy
     新增 RPY 角度：滚转: -0.04°, 俯仰: -0.00°, 偏航: -4.09°  (雷达rpy已有基础上的增加值)
     新增平移向量(x:0.0, y:0.5413647952142253, z:0.0) (非雷达直接平移向量,变换后再平移到指定高度的平移向量)
 """
-file_path = "./pcd/segment.pcd"  # 替换为您的点云文件路径
-r, p, y = -90, 0, 0  # 示例的滚转、俯仰、偏航角
+file_path = "./pcd/segment.pcd"  # 点云文件路径
+r, p, y = -90, 0, 0  # 已经设置的滚转、俯仰、偏航角（点云是在此变换下的）
 target_height = 4.48 # 目标高度
 """
     T_trans * T_init = T_total
@@ -46,6 +48,18 @@ def fit_plane(pcd):
     normal_vector = plane_model[:3]
     d = plane_model[3]
     return normal_vector, d, inliers
+
+def rpy_to_spherical(roll, pitch, yaw):
+    """将滚转、俯仰、偏航角转换为球面坐标"""
+    # 计算极角 theta 和方位角 phi
+    theta = 90 - pitch  # 因为在球坐标系中，极角是从 Z 轴向下测量的
+    phi = yaw           # 方位角是从 X 轴测量的
+
+    # 将 theta 转换为弧度
+    theta_rad = np.radians(theta)
+    phi_rad = np.radians(phi)
+
+    return theta_rad, phi_rad
 
 def rotate_to_xoz_plane(pcd, normal_vector, oncetrans_pcd):
     global r, p, y, target_height, inliers
@@ -80,6 +94,8 @@ def rotate_to_xoz_plane(pcd, normal_vector, oncetrans_pcd):
         print(f"总体 RPY 角度：滚转: {roll:.2f}°, 俯仰: {pitch:.2f}°, 偏航: {yaw:.2f}°")
         roll, pitch, yaw = rotation_matrix_to_rpy(rotation_matrix)
         print(f"新增 RPY 角度：滚转: {roll:.2f}°, 俯仰: {pitch:.2f}°, 偏航: {yaw:.2f}°")
+        theta_rad, phi_rad = rpy_to_spherical(roll, pitch, yaw)
+        print(f"球坐标系角度 theta:{np.degrees(theta_rad)}, phi:{np.degrees(phi_rad)}")
 
         #取inliers的点云 计算点云中心
         inliers_pcd = pcd.select_by_index(inliers)
