@@ -8,17 +8,20 @@ from tkinter import scrolledtext
 from tkinter import filedialog
 import threading
 
-
 """
+    open3d点云可视化  
+    环境安装: pip install open3d numpy
     :=param DIRECTORY_PATH 配置文件路径
     :=param ISFILE 是否是文件 单个文件True 文件夹False
-    :=param FILEPATTERN 文件相同的部分,读取文件夹时设置 如："TestClouds*"
+    :=param FILE_PATTERN 文件相同的部分,读取文件夹时设置 如："TestClouds*"
+    :=param SAVE_PCD_PATH 保存点云的路径
     :=param POINT_SIZE 点的大小
     使用方式： SHIFT+左键选点 右键清除选点
 """
 POINT_SIZE = 3 
 ISFILE= False 
-FILEPATTERN = "TestClouds*" 
+FILE_PATTERN = "TestClouds*" 
+SAVE_PCD_PATH = "./pcd/pointcloud.pcd"
 DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest(1)"
 
 # 自西向东
@@ -85,6 +88,16 @@ class PointCloudVisualizer:
         # 将points列表转换为NumPy数组并返回
         return np.array(points)
 
+    def save_point_cloud(self, file_path, point_cloud):
+        """保存点云数据"""
+        directory = os.path.dirname(file_path)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+            print(f"Directory '{directory}' created.")
+        if point_cloud is not None:
+            o3d.io.write_point_cloud(file_path, point_cloud)
+            self.output_text.insert(tk.END, f"Point cloud saved to {file_path}\n")
+
     def start_visualizer_thread(self):
         """
         启动可视化器线程。
@@ -105,7 +118,7 @@ class PointCloudVisualizer:
         allcloud = np.array(self.pcd)
         self.point_cloud = o3d.geometry.PointCloud()
         self.point_cloud.points = o3d.utility.Vector3dVector(allcloud)
-        o3d.io.write_point_cloud("./pcd/pointcloud.pcd", self.point_cloud)
+        self.save_point_cloud(SAVE_PCD_PATH, self.point_cloud)
         self.vis.add_geometry(self.point_cloud)
 
         self.vis.get_render_option().point_size = POINT_SIZE
@@ -165,7 +178,7 @@ class PointCloudVisualizer:
                 self.output_text.insert(tk.END, f"file {{os.path.basename(file)}} is empty, please make sure it has points!\n")
             self.output_text.see(tk.END)  # 滚动到最新输出
         else:
-            file_pattern = os.path.join(self.directory_path, FILEPATTERN)
+            file_pattern = os.path.join(self.directory_path, FILE_PATTERN)
             files = glob.glob(file_pattern)
             files.sort()
 
