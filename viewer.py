@@ -16,7 +16,8 @@ import threading
 """
 POINT_SIZE = 3 # 显示的点云大小
 
-directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest------250120------29"
+# directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest---------250118--------20"
+directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------250120------34"
 
 # 自西向东
 # directory_path = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest------250120-------1"
@@ -86,7 +87,6 @@ class PointCloudVisualizer:
     def start_visualizer_thread(self):
         """
         启动可视化器线程。
-
         此方法创建一个新线程，该线程将运行 `run_visualizer` 方法，以在后台处理点云数据的可视化。
         """
         # 创建一个新的线程，目标函数是 self.run_visualizer，设置为守护线程
@@ -166,7 +166,7 @@ class PointCloudVisualizer:
             self.output_text.insert(tk.END, f"Number of points in file {os.path.basename(file)}: {len(points)}\n")
             if len(points) <= 0:
                 continue
-        self.output_text.insert(tk.END, f"load {len(files)} files, total pcd size:{len(self.pcd)}\n")
+        self.output_text.insert(tk.END, f"load {len(files)} files, total pcd size:{len(self.pcd)}, average size:{len(self.pcd)/len(files)}\n")
         self.output_text.see(tk.END)  # 滚动到最新输出
         
 
