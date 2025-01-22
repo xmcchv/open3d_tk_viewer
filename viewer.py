@@ -7,6 +7,8 @@ import tkinter as tk
 from tkinter import scrolledtext
 from tkinter import filedialog
 import threading
+import sys
+print(sys.version)
 
 """
     open3d点云可视化  
@@ -18,14 +20,19 @@ import threading
     :=param POINT_SIZE 点的大小
     使用方式： SHIFT+左键选点 右键清除选点
 """
-POINT_SIZE = 3 
+POINT_SIZE = 5
 ISFILE= False 
 FILE_PATTERN = "TestClouds*" 
 SAVE_PCD_PATH = "./pcd/pointcloud.pcd"
-DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest(1)"
+DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------东到西"
 
+
+# DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest------250121-----4"
+
+# 10.12 - 10.15
 # 自西向东
 # DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest------250120-------1"
+# 10.01 - 10.04
 # 自东向西
 # DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------0120--------2"
 
@@ -78,6 +85,8 @@ class PointCloudVisualizer:
                         x = obj['X']
                         y = obj['Y']
                         z = obj['Z']
+                        # if(z > 153.459 or z < 43.115):
+                        #     continue
                         points.append([x, y, z])
                         # 将坐标添加到self.pcd列表中
                         self.pcd.append([x, y, z])
@@ -175,7 +184,7 @@ class PointCloudVisualizer:
             points = self.parse_file(self.directory_path)
             self.output_text.insert(tk.END, f"Number of points in file {os.path.basename(file)}: {len(points)}\n")
             if len(points) <= 0:
-                self.output_text.insert(tk.END, f"file {{os.path.basename(file)}} is empty, please make sure it has points!\n")
+                self.output_text.insert(tk.END, f"file {os.path.basename(file)} is empty, please make sure it has points!\n")
             self.output_text.see(tk.END)  # 滚动到最新输出
         else:
             file_pattern = os.path.join(self.directory_path, FILE_PATTERN)
