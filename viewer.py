@@ -20,14 +20,23 @@ print(sys.version)
     :=param POINT_SIZE 点的大小
     使用方式： SHIFT+左键选点 右键清除选点
 """
-POINT_SIZE = 5
+POINT_SIZE = 3
 ISFILE= False 
 FILE_PATTERN = "TestClouds*" 
 SAVE_PCD_PATH = "./pcd/pointcloud.pcd"
-DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------东到西"
+BASE_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\"
+
+# DIRECTORY_PATH = "CloudsTest-----一档跑一列\CloudsTest"
+# DIRECTORY_PATH = "CloudsTest单雷达由东到西---东雷达61-12列\CloudsTest"
+# DIRECTORY_PATH = "CloudsTest------e--0122----01\CloudsTest"
+# DIRECTORY_PATH = "CloudsTest单雷达由东到西---东雷达61-12列\\CloudsTest"
+# DIRECTORY_PATH = "CloudsTest------17-13\\CloudsTest"
+DIRECTORY_PATH = "CloudsTest-----17-13-1\\CloudsTest"
+# DIRECTORY_PATH = "CloudsTest单雷达由东到西---东雷达61-12列\\CloudsTest"
 
 
-# DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest------250121-----4"
+
+# 12 -> 61  两个雷达   61-> 12 由东向西 东雷达
 
 # 10.12 - 10.15
 # 自西向东
@@ -36,14 +45,13 @@ DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest------
 # 自东向西
 # DIRECTORY_PATH = "C:\\Users\\xmcchv\\Desktop\\宁东\\ndpython\\CloudsTest--------0120--------2"
 
-
 class PointCloudVisualizer:
     def __init__(self, root, directory_path):
         self.root = root
         self.root.geometry("960x480")
         self.root.title("Point Cloud Visualizer")
         # 设置文件夹路径
-        self.directory_path = DIRECTORY_PATH
+        self.directory_path = directory_path
         # 创建文本框用于显示输出
         self.output_text = scrolledtext.ScrolledText(self.root, width=100, height=20, 
                                                       font=("Courier New", 20),  # 设置字体
@@ -86,6 +94,9 @@ class PointCloudVisualizer:
                         y = obj['Y']
                         z = obj['Z']
                         # if(z > 153.459 or z < 43.115):
+                        #     continue
+                        # angv = obj['AngV']
+                        # if angv != 14.98:
                         #     continue
                         points.append([x, y, z])
                         # 将坐标添加到self.pcd列表中
@@ -204,5 +215,5 @@ class PointCloudVisualizer:
 if __name__ == "__main__":
     # 初始化可视化界面
     root = tk.Tk()
-    viewer = PointCloudVisualizer(root, DIRECTORY_PATH)
+    viewer = PointCloudVisualizer(root, BASE_PATH + DIRECTORY_PATH)
     root.mainloop()
