@@ -1,6 +1,6 @@
 import threading
-import time
 import os
+import glob
 import open3d as o3d
 import numpy as np
 import configparser
@@ -12,7 +12,7 @@ from tkinter import scrolledtext
 from tkinter import filedialog
 from tkinter import messagebox
 import ctypes
-
+from datetime import datetime
 
 TKWIDTH = 0.66
 TKHEIGHT = 0.64
@@ -29,22 +29,25 @@ class Config:
     def __init__(self, config_file="config.ini"):
         self.config = configparser.ConfigParser()
         self.config.read(config_file, encoding='utf-8')
-        self.TKWIDTH = float(self.config['Settings']['TKWIDTH'])
-        self.TKHEIGHT = float(self.config['Settings']['TKHEIGHT'])
-        self.TKLENGTH = float(self.config['Settings']['TKLENGTH'])
-        self.AREA_START = float(self.config['Settings']['AREA_START'])
-        self.AREA_END = float(self.config['Settings']['AREA_END'])
-        self.TKNUMBER = int(self.config['Settings']['TKNUMBER'])
-        self.STARTPOS = int(self.config['Settings']['STARTPOS'])
-        self.LOAD_PATH = self.config['Settings']['LOAD_PATH']
-        self.SAVE_PATH = self.config['Settings']['SAVE_PATH']
+        self.TKWIDTH = float(self.config['CalculateTKHeight']['TKWIDTH'])
+        self.TKHEIGHT = float(self.config['CalculateTKHeight']['TKHEIGHT'])
+        self.TKLENGTH = float(self.config['CalculateTKHeight']['TKLENGTH'])
+        self.AREA_START = float(self.config['CalculateTKHeight']['AREA_START'])
+        self.AREA_END = float(self.config['CalculateTKHeight']['AREA_END'])
+        self.TKNUMBER = int(self.config['CalculateTKHeight']['TKNUMBER'])
+        self.STARTPOS = int(self.config['CalculateTKHeight']['STARTPOS'])
+        self.LOAD_PATH = self.config['CalculateTKHeight']['LOAD_PATH']
+        self.SAVE_PATH = self.config['CalculateTKHeight']['SAVE_PATH']
         # 生成 z_ranges
-        left_ranges = [float(x) for x in self.config['Settings']['left_ranges'].split(',')]
-        right_ranges = [float(x) for x in self.config['Settings']['right_ranges'].split(',')]
+        left_ranges = [float(x) for x in self.config['CalculateTKHeight']['left_ranges'].split(',')]
+        right_ranges = [float(x) for x in self.config['CalculateTKHeight']['right_ranges'].split(',')]
         self.z_ranges = list(zip(left_ranges, right_ranges))
 
         self.HOST = self.config['WebSocket']['HOST']
         self.PORT = int(self.config['WebSocket']['PORT'])
+
+        self.FILE_PATTERN = self.config['CalculateTKHeight']['FILE_PATTERN']
+        self.DIRECTORY_PATH = self.config['CalculateTKHeight']['DIRECTORY_PATH']
 
 class tkinterApp:
     def __init__(self, config):
@@ -52,19 +55,19 @@ class tkinterApp:
         user32 = ctypes.windll.user32
         user32.SetProcessDPIAware()
         dpi = user32.GetDpiForSystem() / 96.0
-        WINDOW_WIDTH = int(480 * dpi)
-        WINDOW_HEIGHT = int(640 * dpi)
+        WINDOW_WIDTH = int(640 * dpi)
+        WINDOW_HEIGHT = int(480 * dpi)
         self.root = tk.Tk()
         self.root.title("层高计算算法")
         self.root.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")  # 设置固定窗口大小
         self.root.minsize(int(WINDOW_WIDTH/2), WINDOW_HEIGHT)  # 设置最小窗口大小
         # 创建文本框用于显示输出
-        self.output_text = scrolledtext.ScrolledText(self.root, width=950, height=450,
+        self.output_text = scrolledtext.ScrolledText(self.root, width=600, height=450,
                                                       font=("Courier New", 20),  # 设置字体
                                                       bg="white",  # 设置背景色
                                                       fg="black",  # 设置前景色
                                                       insertbackground='black',  # 光标颜色
-                                                      wrap=tk.WORD)  # 单词换行
+                                                      )  # 单词换行
         self.output_text.pack(side=tk.LEFT, padx=10, pady=10)
         self.config = config
         self.pcd = []
@@ -82,7 +85,7 @@ class CalculateTKHeight:
         self.column_ranges = [(self.config.AREA_START + i * self.config.TKWIDTH, self.config.AREA_START + (i + 1) * self.config.TKWIDTH) for i in range(self.config.TKNUMBER)]
         
 
-    def load_point_cloud(self, json_data):
+    def load_point_cloud_from_socket(self, json_data):
         points = []
         # 加载点云
         try:
@@ -101,6 +104,55 @@ class CalculateTKHeight:
             self.app.output_text.insert(tk.END, f"Error decoding JSON: {json_data}\n")
         self.app.output_text.see(tk.END)  # 滚动到最新输出
         return
+    
+    def parse_file(self, file_path):
+        """
+        解析文件并提取点云数据
+
+        :param file_path: 要解析的文件路径
+        :return: 包含点云数据的NumPy数组
+        """
+        points = []
+        # 打开文件并逐行读取
+        with open(file_path, 'r') as file:
+            for line in file: 
+                # 分割大车位置和JSON部分
+                parts = line.strip().split('---')  
+                # 如果分割后的部分少于2个，则跳过该行
+                if len(parts) < 2:
+                    continue
+                json_data = parts[1].strip()
+                try:
+                    json_objects = json.loads(json_data)
+                    for obj in json_objects:
+                        x = obj['X']
+                        y = obj['Y']
+                        z = obj['Z']
+                        points.append([x, y, z])
+                except json.JSONDecodeError:
+                    # 如果解析JSON时出错，输出错误信息
+                    self.output_text.insert(tk.END, f"Error decoding JSON: {json_data}\n")
+                    self.output_text.see(tk.END)  # 滚动到最新输出
+        # 将points列表转换为NumPy数组并返回
+        return np.array(points)
+    
+    def load_point_cloud_from_directory(self):
+        totalpointclouds = []
+        # 遍历目录中的所有文件
+        file_pattern = os.path.join(self.config.DIRECTORY_PATH, self.config.FILE_PATTERN)
+        self.app.output_text.see(tk.END)  # 滚动到最新输出
+        files = glob.glob(file_pattern)
+        files.sort()
+        total_files = len(files)
+        for file in files:
+            points = self.parse_file(file)
+            if len(points) <= 0:
+                continue
+            totalpointclouds.extend(points.tolist())
+        self.point_cloud = o3d.geometry.PointCloud()
+        self.point_cloud.points = o3d.utility.Vector3dVector(totalpointclouds)
+        self.app.output_text.insert(tk.END, f"load {total_files} files, total pcd size:{len(totalpointclouds)}, average size:{len(totalpointclouds)/total_files}\n")
+        self.app.output_text.see(tk.END)  # 滚动到最新输出
     
     def load_point_cloud_fromPath(self):
         # 加载点云
@@ -152,6 +204,8 @@ class CalculateTKHeight:
                         level = max_levels[0]  # 只取第一个点云个数最多的层
                         avg_height = avg_heights[0] if avg_heights else None
                         self.results.append((lower, upper, column_lower, column_upper, level, avg_height, max_count))  # 记录符合条件的结果
+        self.print_results_singletk()
+
     def package_results_json(self):
         results_json = []
         result_groups = []
@@ -167,7 +221,9 @@ class CalculateTKHeight:
                         "level": level,
                     }
                     results_json.append(result)
-        print(results_json)
+        # self.app.output_text.insert(tk.END, f"package results: {results_json}\n")
+        self.app.output_text.insert(tk.END, f"send results: {len(results_json)}\n")
+        self.app.output_text.see(tk.END)  # 滚动到最新输出
         return results_json    
         
     def print_results(self):
@@ -192,12 +248,15 @@ class CalculateTKHeight:
 
         # 手动输出formatted_results，每21个元素后换行
         start_index = self.config.STARTPOS
+        string = []
         for i in range(0, len(levellist)):
-            print(f"{start_index}: ", end=" ")
+            string.append(f"{start_index}: ")
             for j in range(0, self.config.TKNUMBER):
-                print(f"{levellist[i][j]:2d}", end=" ")
-            print("")
+                string.append(f"{levellist[i][j]:2d}")
+            string.append("\n")
             start_index += 1
+        self.app.output_text.insert(tk.END, "".join(string))
+        self.app.output_text.see(tk.END)  # 滚动到最新输出
 
     def save_point_cloud(self):
         # 保存点云
@@ -216,24 +275,39 @@ class WebSocketServer:
         def run_websocket(self):
             asyncio.run(self.start())
 
+        def decode_json(self, json_data):
+            # 解析JSON数据
+            json_objects = json.loads(json_data)
+            # for obj in json_objects:
+                # flag = obj['flag']
+            flag = json_objects[0]['flag']
+            return flag
+
         async def handle_client(self, websocket):
             try:
                 async for message in websocket:
                     try:
-                        print(f"Received JSON data in {time.time()}")
-                        self.calculator.load_point_cloud(message)
-                        # 返回 self.results
-                        self.calculator.calculate_average_height()
+                        self.calculator.app.output_text.insert(tk.END, f"Received JSON data in {datetime.now().strftime('%Y/%m/%d %H:%M:%S')}\n")
+                        self.calculator.app.output_text.see(tk.END)  # 滚动到最新输出
+                        # self.calculator.load_point_cloud_from_socket(message)
+                        flag = self.decode_json(message)
+                        if flag == 1:
+                            self.calculator.load_point_cloud_from_directory()
+                            self.calculator.calculate_average_height()
                         await websocket.send(json.dumps(self.calculator.package_results_json()))
                     except json.JSONDecodeError as e:
-                        print("Error decoding JSON:", e)
+                        self.calculator.app.output_text.insert(tk.END, f"Error decoding JSON: {e}\n")
+                        self.calculator.app.output_text.see(tk.END)  # 滚动到最新输出
                         await websocket.send(json.dumps({"error": "Invalid JSON format"}))
             except websockets.exceptions.ConnectionClosedError:
-                print("Client disconnected")
+                self.calculator.app.output_text.insert(tk.END, f"Client disconnected\n")
+                self.calculator.app.output_text.see(tk.END)  # 滚动到最新输出
 
         async def start(self):
             async with websockets.serve(self.handle_client, self.host, self.port):
-                print(f"WebSocket server started at ws://{self.host}:{self.port}")
+                self.calculator.app.output_text.insert(tk.END, f"WebSocket server started at ws://{self.host}:{self.port}\n")
+                self.calculator.app.output_text.see(tk.END)  # 滚动到最新输出
+                # print(f"WebSocket server started at ws://{self.host}:{self.port}")
                 await asyncio.Future()  # 保持服务器运行
 
 if __name__ == "__main__":
