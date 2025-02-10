@@ -3,7 +3,7 @@ import json
 import websockets
 
 async def client():
-    uri = "ws://192.168.125.115:9800"  # 替换为你的服务器地址和端口
+    uri = "ws://localhost:9800"  # 替换为你的服务器地址和端口
     async with websockets.connect(uri) as websocket:
         # 模拟要发送的JSON消息
         # message = json.dumps([

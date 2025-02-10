@@ -48,6 +48,7 @@ class Config:
 
         self.FILE_PATTERN = self.config['CalculateTKHeight']['FILE_PATTERN']
         self.DIRECTORY_PATH = self.config['CalculateTKHeight']['DIRECTORY_PATH']
+        self.SAVE_JSON_PATH = self.config['CalculateTKHeight']['SAVE_JSON_PATH']
 
 class tkinterApp:
     def __init__(self, config):
@@ -206,6 +207,15 @@ class CalculateTKHeight:
                         self.results.append((lower, upper, column_lower, column_upper, level, avg_height, max_count))  # 记录符合条件的结果
         self.print_results_singletk()
 
+    def save_json_file(self, results_json, file_path):
+        """
+        将结果保存为JSON文件
+        :param results_json: 要保存的JSON数据
+        :param file_path: 保存文件的路径
+        """
+        with open(file_path, 'w') as json_file:
+            json.dump(results_json, json_file, indent=4)
+
     def package_results_json(self):
         results_json = []
         result_groups = []
@@ -224,6 +234,7 @@ class CalculateTKHeight:
         # self.app.output_text.insert(tk.END, f"package results: {results_json}\n")
         self.app.output_text.insert(tk.END, f"send results: {len(results_json)}\n")
         self.app.output_text.see(tk.END)  # 滚动到最新输出
+        self.save_json_file(results_json, self.config.SAVE_JSON_PATH)
         return results_json    
         
     def print_results(self):
@@ -278,8 +289,6 @@ class WebSocketServer:
         def decode_json(self, json_data):
             # 解析JSON数据
             json_objects = json.loads(json_data)
-            # for obj in json_objects:
-                # flag = obj['flag']
             flag = json_objects[0]['flag']
             return flag
 
