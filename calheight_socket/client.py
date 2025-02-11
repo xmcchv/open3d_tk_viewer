@@ -15,9 +15,9 @@ async def client():
         #     {"X": 8.4, "Y": 4.48, "Z": 45.4509 },
         #     {"X": 4.913353, "Y": 1.3619995, "Z": 46.72006}
         # ])
-        message = json.dumps([
+        message = json.dumps(
             {"flag":1}
-        ])
+        )
         await websocket.send(message)
         # print(f"> Sent: {message}")
 
