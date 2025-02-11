@@ -1,5 +1,6 @@
 import threading
 import os
+import sys
 import glob
 import open3d as o3d
 import numpy as np
@@ -12,6 +13,7 @@ from tkinter import scrolledtext
 from tkinter import filedialog
 from tkinter import messagebox
 import ctypes
+import platform
 from datetime import datetime
 
 TKWIDTH = 0.66
@@ -25,6 +27,22 @@ STARTPOS = 13
 LOAD_PATH = "./python2dll/dist/pcd/pointcloud_CloudsTest.pcd"
 SAVE_PATH = "./python2dll/dist/pcd/filter_CloudsTest.pcd"
 
+def get_dpi():
+    # 获取当前操作系统
+    current_os = platform.system()
+
+    if current_os == "Windows":
+        # Windows 平台
+        user32 = ctypes.windll.user32
+        user32.SetProcessDPIAware()
+        dpi = user32.GetDpiForSystem() / 96.0
+    elif current_os == "Linux":
+        dpi = 1.0  # 设置默认 DPI
+    else:
+        raise NotImplementedError(f"Unsupported OS: {current_os}")
+
+    return dpi
+    
 class Config:
     def __init__(self, config_file="config.ini"):
         self.config = configparser.ConfigParser()
@@ -53,9 +71,8 @@ class Config:
 class tkinterApp:
     def __init__(self, config):
         # 获取屏幕的DPI比例
-        user32 = ctypes.windll.user32
-        user32.SetProcessDPIAware()
-        dpi = user32.GetDpiForSystem() / 96.0
+        dpi = get_dpi()
+        # dpi = 1
         WINDOW_WIDTH = int(640 * dpi)
         WINDOW_HEIGHT = int(480 * dpi)
         self.root = tk.Tk()
@@ -72,6 +89,18 @@ class tkinterApp:
         self.output_text.pack(side=tk.LEFT, padx=10, pady=10)
         self.config = config
         self.pcd = []
+        
+    def log_message(self, message, new_line=True):
+        """
+        将消息插入到输出文本框，并根据 new_line 参数控制是否换行。
+        :param message: 要插入的消息
+        :param new_line: 是否在消息后换行，默认为 True
+        """
+        if new_line:
+            self.output_text.insert(tk.END, message + "\n")
+        else:
+            self.output_text.insert(tk.END, message)
+        self.output_text.see(tk.END)  # 滚动到最新输出
 
 class CalculateTKHeight:
     def __init__(self, config):
@@ -99,11 +128,10 @@ class CalculateTKHeight:
                 points.append([x, y, z])
             self.point_cloud = o3d.geometry.PointCloud()
             self.point_cloud.points = o3d.utility.Vector3dVector(points)
-            self.app.output_text.insert(tk.END, f"receive points: {len(points)}\n")
+            self.app.log_message(f"receive points: {len(points)}")
         except json.JSONDecodeError:
             # 如果解析JSON时出错，输出错误信息
-            self.app.output_text.insert(tk.END, f"Error decoding JSON: {json_data}\n")
-        self.app.output_text.see(tk.END)  # 滚动到最新输出
+            self.app.log_message(f"Error decoding JSON: {json_data}")
         return
     
     def parse_file(self, file_path):
@@ -132,7 +160,7 @@ class CalculateTKHeight:
                         points.append([x, y, z])
                 except json.JSONDecodeError:
                     # 如果解析JSON时出错，输出错误信息
-                    self.output_text.insert(tk.END, f"Error decoding JSON: {json_data}\n")
+                    self.output_text.insert(tk.END, f"Error decoding JSON: {json_data} in file:{file.name}\n")
                     self.output_text.see(tk.END)  # 滚动到最新输出
         # 将points列表转换为NumPy数组并返回
         return np.array(points)
@@ -145,6 +173,7 @@ class CalculateTKHeight:
         files = glob.glob(file_pattern)
         files.sort()
         total_files = len(files)
+        self.app.log_message(f"Process Loading {total_files} files from directory")
         for file in files:
             points = self.parse_file(file)
             if len(points) <= 0:
@@ -152,8 +181,8 @@ class CalculateTKHeight:
             totalpointclouds.extend(points.tolist())
         self.point_cloud = o3d.geometry.PointCloud()
         self.point_cloud.points = o3d.utility.Vector3dVector(totalpointclouds)
-        self.app.output_text.insert(tk.END, f"load {total_files} files, total pcd size:{len(totalpointclouds)}, average size:{len(totalpointclouds)/total_files}\n")
-        self.app.output_text.see(tk.END)  # 滚动到最新输出
+        self.app.log_message(f"load {total_files} files, total pcd size:{len(totalpointclouds)}, average size:{len(totalpointclouds)/total_files}")
+
     
     def load_point_cloud_fromPath(self):
         # 加载点云
@@ -164,7 +193,7 @@ class CalculateTKHeight:
         points = np.asarray(self.point_cloud.points)
         # 删掉所有点云y轴高度大于9的点
         points = points[points[:, 1] < 9]
-        # 计算每个范围内的 Z 轴平均高度
+        # 计算每个范围内的 Y 轴平均高度
         self.results = []
         
         for index, (lower, upper) in enumerate(self.config.z_ranges):
@@ -213,8 +242,18 @@ class CalculateTKHeight:
         :param results_json: 要保存的JSON数据
         :param file_path: 保存文件的路径
         """
-        with open(file_path, 'w') as json_file:
-            json.dump(results_json, json_file, indent=4)
+        # 检查路径是否有效
+        directory = os.path.dirname(file_path)
+        if not os.path.exists(directory):
+            self.app.log_message(f"Error: The directory '{directory}' does not exist. File will not be saved.")
+            return  # 目录不存在，退出方法，不保存文件
+        # 如果路径有效，保存文件
+        try:
+            with open(file_path, 'w') as json_file:
+                json.dump(results_json, json_file, indent=4)
+            self.app.log_message(f"File saved successfully at '{file_path}'.")
+        except IOError as e:
+            self.app.log_message(f"Error saving file: {e}")
 
     def package_results_json(self):
         results_json = []
@@ -231,9 +270,7 @@ class CalculateTKHeight:
                         "level": level,
                     }
                     results_json.append(result)
-        # self.app.output_text.insert(tk.END, f"package results: {results_json}\n")
-        self.app.output_text.insert(tk.END, f"send results: {len(results_json)}\n")
-        self.app.output_text.see(tk.END)  # 滚动到最新输出
+        self.app.log_message(f"results lens: {len(results_json)}")
         self.save_json_file(results_json, self.config.SAVE_JSON_PATH)
         return results_json    
         
@@ -266,8 +303,7 @@ class CalculateTKHeight:
                 string.append(f"{levellist[i][j]:2d}")
             string.append("\n")
             start_index += 1
-        self.app.output_text.insert(tk.END, "".join(string))
-        self.app.output_text.see(tk.END)  # 滚动到最新输出
+        self.app.log_message("".join(string), new_line=False)
 
     def save_point_cloud(self):
         # 保存点云
@@ -289,21 +325,31 @@ class WebSocketServer:
         def decode_json(self, json_data):
             # 解析JSON数据
             json_objects = json.loads(json_data)
-            flag = json_objects[0]['flag']
+            flag = json_objects['flag']
             return flag
 
         async def handle_client(self, websocket):
             try:
                 async for message in websocket:
                     try:
-                        self.calculator.app.output_text.insert(tk.END, f"Received JSON data in {datetime.now().strftime('%Y/%m/%d %H:%M:%S')}\n")
+                        # 获取当前时间
+                        current_time = datetime.now()
+                        self.calculator.app.output_text.insert(tk.END, f"Received JSON data in {current_time.strftime('%Y/%m/%d %H:%M:%S')}\n")
                         self.calculator.app.output_text.see(tk.END)  # 滚动到最新输出
                         # self.calculator.load_point_cloud_from_socket(message)
                         flag = self.decode_json(message)
                         if flag == 1:
+                            self.calculator.app.output_text.insert(tk.END, f"Decode Json data, singal is {flag}, start processing\n")
+                            self.calculator.app.output_text.see(tk.END)  # 滚动到最新输出
                             self.calculator.load_point_cloud_from_directory()
                             self.calculator.calculate_average_height()
                         await websocket.send(json.dumps(self.calculator.package_results_json()))
+                        # 假设你要计算一小时前的时间
+                        previous_time = datetime.now()
+                        # 计算时间差
+                        time_difference = previous_time - current_time
+                        self.calculator.app.output_text.insert(tk.END, f"Finished! spend {time_difference.total_seconds()}s\n")
+                        self.calculator.app.output_text.see(tk.END)  # 滚动到最新输出
                     except json.JSONDecodeError as e:
                         self.calculator.app.output_text.insert(tk.END, f"Error decoding JSON: {e}\n")
                         self.calculator.app.output_text.see(tk.END)  # 滚动到最新输出
