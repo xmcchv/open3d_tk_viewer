@@ -16,3 +16,9 @@ setup variable "file_path" in fitplane.py and run ```python fitplane.py``` in te
 
 ## modify
 if you have different file format, you should implement your own ```load_point_cloud``` function
+
+
+## 2exe
+
+pyinstaller --add-data "./config.ini;." --onefile cal_height_socket.py
+
