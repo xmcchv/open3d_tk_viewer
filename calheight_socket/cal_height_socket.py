@@ -27,6 +27,10 @@ STARTPOS = 13
 LOAD_PATH = "./python2dll/dist/pcd/pointcloud_CloudsTest.pcd"
 SAVE_PATH = "./python2dll/dist/pcd/filter_CloudsTest.pcd"
 
+CORRD_MODE = 1
+AXIS_X = 2
+AXIS_Z = 0
+
 def get_dpi():
     # 获取当前操作系统
     current_os = platform.system()
@@ -61,6 +65,15 @@ class Config:
         right_ranges = [float(x) for x in self.config['CalculateTKHeight']['right_ranges'].split(',')]
         self.z_ranges = list(zip(left_ranges, right_ranges))
 
+        self.CORRD_MODE = int(self.config['CalculateTKHeight']['CORRD_MODE'])
+        if self.CORRD_MODE == 1:
+            self.AXIS_X = 0
+            self.AXIS_Z = 2
+        elif self.CORRD_MODE == 0:
+            self.AXIS_X = 2
+            self.AXIS_Z = 0
+        else:
+            raise ValueError("CORRD_MODE must be 0 or 1")
         self.HOST = self.config['WebSocket']['HOST']
         self.PORT = int(self.config['WebSocket']['PORT'])
 
@@ -198,13 +211,14 @@ class CalculateTKHeight:
         
         for index, (lower, upper) in enumerate(self.config.z_ranges):
             # 过滤 Z 轴在范围内的点
-            filtered_points = points[(points[:, 2] >= lower) & (points[:, 2] < upper)]
+            filtered_points = points[(points[:, self.config.AXIS_Z] >= lower) & (points[:, self.config.AXIS_Z] < upper)]
             if filtered_points.size == 0:
                 avg_height = None  # 如果没有点在这个范围内
+                self.app.log_message(f"no point in range: {lower} to {upper}")
             else:
                 for column_lower, column_upper in self.column_ranges:
                     # 过滤在当前列范围内的点
-                    column_points = filtered_points[(filtered_points[:, 0] >= column_lower) & (filtered_points[:, 0] < column_upper)]
+                    column_points = filtered_points[(filtered_points[:, self.config.AXIS_X] >= column_lower) & (filtered_points[:, self.config.AXIS_X] < column_upper)]
                     # 将点云转换为Open3D的PointCloud对象
                     pcd = o3d.geometry.PointCloud()
                     pcd.points = o3d.utility.Vector3dVector(filtered_points)
@@ -272,6 +286,7 @@ class CalculateTKHeight:
                     results_json.append(result)
         self.app.log_message(f"results lens: {len(results_json)}")
         self.save_json_file(results_json, self.config.SAVE_JSON_PATH)
+        self.save_point_cloud()
         return results_json    
         
     def print_results(self):
@@ -307,9 +322,13 @@ class CalculateTKHeight:
 
     def save_point_cloud(self):
         # 保存点云
-        savepcd = o3d.geometry.PointCloud()
-        savepcd.points = o3d.utility.Vector3dVector(np.array(self.totalpcd))
-        o3d.io.write_point_cloud(self.config.SAVE_PATH, savepcd)
+        try:
+            savepcd = o3d.geometry.PointCloud()
+            savepcd.points = o3d.utility.Vector3dVector(np.array(self.totalpcd))
+            o3d.io.write_point_cloud(self.config.SAVE_PATH, savepcd)
+            self.app.log_message(f"Successfully wrote PCD file: {self.config.SAVE_PATH}")
+        except Exception as e:
+            self.app.log_message(f"Failed to write PCD file: {e}")
 
 class WebSocketServer:
         def __init__(self, config, calculator):
